@@ -61,3 +61,40 @@ kotlin {
         val nativeTest by getting
     }
 }
+
+publishing {
+    publications.withType<MavenPublication> {
+        artifact(tasks["javadocJar"])
+
+        pom {
+            packaging = "jar"
+
+            developers {
+                developer {
+                    id.set("durganmcbroom")
+                    name.set("Durgan McBroom")
+                }
+            }
+
+            withXml {
+                val repositoriesNode = asNode().appendNode("repositories")
+                val yakclientRepositoryNode = repositoriesNode.appendNode("repository")
+                yakclientRepositoryNode.appendNode("id", "yakclient")
+                yakclientRepositoryNode.appendNode("url", "http://maven.yakclient.net/snapshots")
+            }
+
+            licenses {
+                license {
+                    name.set("MIT License")
+                    url.set("https://opensource.org/licenses/MIT")
+                }
+            }
+
+            scm {
+                connection.set("scm:git:git://github.com/durganmcbroom/jobs")
+                developerConnection.set("scm:git:ssh://github.com:durganmcbroom/jobs")
+                url.set("https://github.com/durganmcbroom/jobs")
+            }
+        }
+    }
+}

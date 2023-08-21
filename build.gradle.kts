@@ -49,9 +49,7 @@ kotlin {
             }
         }
         val jvmMain by getting
-        val jvmTest by getting {
-
-        }
+        val jvmTest by getting {}
         val jsMain by getting
         val jsTest by getting
         val nativeMain by getting
@@ -60,7 +58,7 @@ kotlin {
 }
 
 tasks.register("publishAll") {
-    dependsOn(allprojects.map { it.task("publish") })
+    dependsOn(allprojects.map { it.tasks.getByName("publish") })
 }
 
 tasks.register("publishAllLocally") {

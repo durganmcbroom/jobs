@@ -72,6 +72,7 @@ publishing {
 
         pom {
             packaging = "jar"
+            artifactId = "jobs-progress-$artifactId"
 
             developers {
                 developer {
@@ -86,6 +87,7 @@ publishing {
                 yakclientRepositoryNode.appendNode("id", "yakclient")
                 yakclientRepositoryNode.appendNode("url", "http://maven.yakclient.net/snapshots")
             }
+
 
             licenses {
                 license {

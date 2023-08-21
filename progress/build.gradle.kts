@@ -68,6 +68,7 @@ publishing {
 
         pom {
             packaging = "jar"
+            artifactId = "jobs-$artifactId"
 
             developers {
                 developer {

@@ -1,5 +1,7 @@
 package com.durganmcbroom.jobs
 
+import kotlin.jvm.JvmInline
+
 public sealed class JobOutput<out T, out E> {
     public fun wasSuccess() : Boolean = this is Success
 
@@ -24,9 +26,17 @@ public sealed class JobOutput<out T, out E> {
 
     public data class Success<T>(
         val output: T
-    ) : JobOutput<T, Nothing>()
+    ) : JobOutput<T, Nothing>() {
+        override fun toString(): String {
+            return "Success($output)"
+        }
+    }
 
     public data class Failure<E>(
         val output: E
-    ) : JobOutput<Nothing, E>()
+    ) : JobOutput<Nothing, E>() {
+        override fun toString(): String {
+            return "Failure($output)"
+        }
+    }
 }

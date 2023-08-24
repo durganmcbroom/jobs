@@ -1,73 +1,83 @@
 package com.durganmcbroom.jobs
 
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
-
+import kotlinx.coroutines.*
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 private class JobThrowable(
     val err: Any?
 ) : Throwable()
 
-public class NewJobReference<E> {
-    public fun earlyReturn(err: E): Nothing {
+public class JobScope<E> internal constructor(
+    private val delegate: CoroutineScope
+) : CoroutineScope by delegate {
+    public fun fail(err: E): Nothing {
         throw JobThrowable(err)
+    }
+
+    public fun <T> JobOutput<T, E>.attempt() : T = when (this) {
+        is JobOutput.Failure<E> -> fail(output)
+        is JobOutput.Success<T> -> output
     }
 }
 
-public fun <
-        C : JobContext<*>,
-        T,
-        E> newJob(scope: C.(ref: NewJobReference<E>) -> T): Job<C, JobOutput<T, E>> {
+public fun <T, E> Job(block: suspend CoroutineScope.() -> JobOutput<T, E>): Job<T, E> = object : Job<T, E> {
+    override suspend fun invoke(): JobOutput<T, E> = coroutineScope(block)
+}
 
-    return Job { context ->
-        val run = runCatching { context.scope(NewJobReference()) }
+public suspend fun <T, E> job(
+    context: CoroutineContext = EmptyCoroutineContext,
+    block: suspend JobScope<E>.() -> T
+): Deferred<JobOutput<T, E>> {
+    val job = Job {
+        val result = runCatching {
+            JobScope<E>(this@Job).block()
+        }
 
-        val output = if (run.isSuccess) {
-            JobOutput.Success(run.getOrNull()!!)
-        } else {
-            val exception = run.exceptionOrNull()
+        if (result.isSuccess) JobOutput.Success(result.getOrNull()!!)
+        else {
+            val exception = result.exceptionOrNull()
             val err = (exception as? JobThrowable)?.err ?: throw (exception
                 ?: IllegalStateException("Job was not successful however there is also no error thrown."))
             JobOutput.Failure(err as E)
         }
+    }
 
-        (context.orchestrator as? ExecutableJobOrchestrator<*>)?.orchestrate()
+    return job(context, job)
+}
 
-        output
+public suspend fun <T, E> job(
+    context: CoroutineContext = EmptyCoroutineContext,
+    job: Job<T, E>
+): Deferred<JobOutput<T, E>> = coroutineScope {
+    val appliedJob = context.fold(job) { acc, it ->
+        if (it is JobElementHolder<*>) (it.inner as? JobLifecycleElement<*>)?.apply(acc) ?: acc else acc
+    }
+
+    async(context) {
+        appliedJob()
     }
 }
 
-public fun <C : JobContext<*>, T : Any> newJobCatching(scope: C.(ref: NewJobReference<Throwable>) -> T): Job<C, JobOutput<T, Throwable>> {
-    return newJob { ref ->
+public suspend fun <T> jobCatching(
+    context: CoroutineContext = EmptyCoroutineContext,
+    block: suspend JobScope<Throwable>.() -> T
+): Deferred<JobOutput<T, Throwable>> {
+    val catchingJob = Job {
+        val jobScope = JobScope<Throwable>(this)
+
         val result = runCatching {
-            scope(ref)
+            jobScope.block()
         }
 
-        if (result.isFailure) ref.earlyReturn(result.exceptionOrNull()!!)
+        if (result.isSuccess) JobOutput.Success(result.getOrNull()!!)
         else {
-            result.getOrNull() ?: throw IllegalStateException("Job was successful however there is no result value!")
+            val exception = result.exceptionOrNull()
+            val err = ((exception as? JobThrowable)?.err as? Throwable) ?: exception
+            ?: IllegalStateException("Job was not successful however there is also no error thrown.")
+            JobOutput.Failure(err)
         }
     }
-}
 
-public fun <C : JobContext<*>, T> newWorkload(
-    context: C,
-    scope: C.() -> T
-): T {
-    return context.scope()
-}
-
-public fun <S : CompositionStub, C : JobContext<S>, O : JobOutput<*, *>> C.with(
-    stub: S,
-    job: Job<C, O>
-): JobSupervisor<C, O> {
-    return orchestrator.register(stub, job)
-}
-
-public fun <S : CompositionStub, C : JobContext<S>, T, E> C.with(
-    stub: S,
-    scope: C.(ref: NewJobReference<E>) -> T
-): JobSupervisor<C, JobOutput<T, E>> {
-    return orchestrator.register(stub, newJob(scope))
+    return job(context, catchingJob)
 }

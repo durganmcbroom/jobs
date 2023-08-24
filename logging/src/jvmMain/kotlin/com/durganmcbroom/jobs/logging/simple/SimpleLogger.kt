@@ -1,9 +1,8 @@
 package com.durganmcbroom.jobs.logging.simple
 
+import com.durganmcbroom.jobs.holdElement
 import com.durganmcbroom.jobs.logging.LogLevel
 import com.durganmcbroom.jobs.logging.Logger
-import java.io.PrintWriter
-import java.io.StringWriter
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -11,16 +10,19 @@ import java.util.logging.Handler
 import java.util.logging.Level
 import java.util.logging.LogManager
 import java.util.logging.LogRecord
+import kotlin.coroutines.CoroutineContext
 import java.util.logging.Level as JavaLevel
 import java.util.logging.Logger as JavaLogger
 
+public fun SimpleLogger(name: String) : CoroutineContext {
+    return holdElement(SimpleLogger(SimpleLogger.createLogger(name)))
+}
 
-public class SimpleLogger private constructor(
-    public val realLogger: JavaLogger
+private class SimpleLogger (
+    val realLogger: JavaLogger
 ) : Logger {
-    public constructor(name: String) : this(createLogger(name))
-    private companion object {
-        private fun createLogger(name: String) : JavaLogger {
+    companion object {
+        fun createLogger(name: String) : JavaLogger {
             LogManager.getLogManager().reset()
             val rootLogger: JavaLogger = LogManager.getLogManager().getLogger("")
 
@@ -52,14 +54,13 @@ public class SimpleLogger private constructor(
 
             rootLogger.addHandler(value)
 
-
             return JavaLogger.getLogger(name)
         }
     }
 
     override val name: String by realLogger::name
 
-    private infix fun getLevel(logger: java.util.logging.Logger): LogLevel {
+    private infix fun getLevel(logger: JavaLogger): LogLevel {
         fun mapLevel(level: JavaLevel): LogLevel = when (level) {
             JavaLevel.INFO -> LogLevel.INFO
             JavaLevel.FINE -> LogLevel.DEBUG
@@ -88,6 +89,10 @@ public class SimpleLogger private constructor(
         realLogger.log(l, msg)
     }
 
+    override fun compose(old: Logger): Logger {
+        return this
+    }
+
     private fun dmLevelToJavaLevel(level: LogLevel): JavaLevel? = when (level) {
         LogLevel.INFO -> JavaLevel.INFO
         LogLevel.DEBUG -> JavaLevel.FINE
@@ -96,3 +101,4 @@ public class SimpleLogger private constructor(
         LogLevel.CRITICAL -> JavaLevel.SEVERE
     }
 }
+

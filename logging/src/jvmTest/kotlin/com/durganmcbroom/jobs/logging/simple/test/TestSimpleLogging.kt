@@ -1,48 +1,56 @@
 package com.durganmcbroom.jobs.logging.simple.test
 
-import com.durganmcbroom.jobs.CompositionStub
-import com.durganmcbroom.jobs.JobContext
-import com.durganmcbroom.jobs.JobOrchestrator
-import com.durganmcbroom.jobs.coroutines.CoroutineJobContext
-import com.durganmcbroom.jobs.coroutines.CoroutineJobOrchestrator
-import com.durganmcbroom.jobs.logging.LogLevel
-import com.durganmcbroom.jobs.logging.Logger
-import com.durganmcbroom.jobs.logging.LoggingContext
-import com.durganmcbroom.jobs.logging.simple.SimpleLogger
-import com.durganmcbroom.jobs.newWorkload
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.durganmcbroom.jobs.logging.critical
+import com.durganmcbroom.jobs.logging.info
+import com.durganmcbroom.jobs.logging.simple.newSimpleLogger
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlin.coroutines.CoroutineContext
 import kotlin.test.Test
 
-data class MyContext(
-    override val logger: Logger,
-    override val scope: CoroutineScope,
-) : JobContext<MyCompositionStub>, CoroutineJobContext<MyCompositionStub>, LoggingContext<MyCompositionStub> {
-    override val orchestrator: JobOrchestrator<MyCompositionStub> = CoroutineJobOrchestrator(this)
+//data class MyContext(
+//    override val logger: Logger,
+//    override val scope: CoroutineScope,
+//) : JobContext<MyCompositionStub>, CoroutineJobContext<MyCompositionStub>, LoggingElement<MyCompositionStub> {
+//    override val orchestrator: JobOrchestrator<MyCompositionStub> = CoroutineJobOrchestrator(this)
+//
+//    override fun compose(stub: MyCompositionStub): JobContext<MyCompositionStub> {
+//        return MyContext(SimpleLogger(stub.name), scope)
+//    }
+//}
+//
+//data class MyCompositionStub(
+//    val name: String
+//) : CompositionStub
 
-    override fun compose(stub: MyCompositionStub): JobContext<MyCompositionStub> {
-        return MyContext(SimpleLogger(stub.name), scope)
-    }
+fun MyContext(name: String) : CoroutineContext {
+    return newSimpleLogger(name)
 }
-
-data class MyCompositionStub(
-    val name: String
-) : CompositionStub
 
 class TestSimpleLogging {
     @Test
     fun `Test simple logging`() {
-        newWorkload(MyContext(SimpleLogger("First"), CoroutineScope(Dispatchers.Default))) {
-            logger.level = LogLevel.DEBUG
-
-            info("Can you see this?")
-            warning("Another test...")
-
-            error("AN ERROR OCCURRED")
-
-            critical("CRITICAL")
-
-            debug("A debug statement")
+        runBlocking(MyContext("First one")) {
+            info("Hey how are you?")
+            launch(MyContext("Second one")) {
+                critical("Uh oh!!! There was an error")
+                launch(MyContext("Third one")) {
+                    info("never mind, the third one says were fine")
+                }
+            }
         }
+
+//        newWorkload(MyContext(SimpleLogger("First"), CoroutineScope(Dispatchers.Default))) {
+//            logger.level = LogLevel.DEBUG
+//
+//            info("Can you see this?")
+//            warning("Another test...")
+//
+//            error("AN ERROR OCCURRED")
+//
+//            critical("CRITICAL")
+//
+//            debug("A debug statement")
+//        }
     }
 }

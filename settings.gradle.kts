@@ -1,6 +1,5 @@
 
 rootProject.name = "jobs"
-include("coroutines")
 include("progress")
 include("logging")
 include("progress:bars")

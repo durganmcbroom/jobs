@@ -1,71 +1,70 @@
 package com.durganmcbroom.jobs.progress.test
 
-import com.durganmcbroom.jobs.*
-import com.durganmcbroom.jobs.coroutines.CoroutineJobContext
-import com.durganmcbroom.jobs.coroutines.CoroutineJobOrchestrator
+import com.durganmcbroom.jobs.holdElement
+import com.durganmcbroom.jobs.job
+import com.durganmcbroom.jobs.logging.simple.SimpleLogger
+import com.durganmcbroom.jobs.logging.simple.newSimpleLogger
+import com.durganmcbroom.jobs.newWorkload
 import com.durganmcbroom.jobs.progress.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.newCoroutineContext
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
-import kotlin.with
+import kotlin.coroutines.CoroutineContext
 
-data class MyContext(
-    override val progress: ProgressTracker,
-    override val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
-) : JobContext<MyContextStub>, CoroutineJobContext<MyContextStub>, ProgressingJobContext<MyContextStub, MyNotification> {
-    override val orchestrator: JobOrchestrator<MyContextStub> = ProgressingJobOrchestrator(this,CoroutineJobOrchestrator(this))
+//data class MyContext(
+//    override val progress: ProgressTracker,
+//    override val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
+//) : JobContext<MyContextStub>, CoroutineJobContext<MyContextStub>, ProgressingJobContext<MyContextStub, MyNotification> {
+//    override val orchestrator: JobOrchestrator<MyContextStub> = ProgressingJobOrchestrator(this,CoroutineJobOrchestrator(this))
+//
+//    override fun compose(stub: MyContextStub): JobContext<MyContextStub> {
+//        return MyContext(progress.compose(), scope)
+//    }
+//}
+//
+//data class MyContextStub(
+//    override val weight: Int
+//) : CompositionStub, ProgressingCompositionStub
 
-    override fun compose(stub: MyContextStub): JobContext<MyContextStub> {
-        return MyContext(progress.compose(), scope)
-    }
-}
-
-data class MyContextStub(
-    override val weight: Int
-) : CompositionStub, ProgressingCompositionStub
-
-data class MyNotification(
-    val message: String
-) : NotificationMetadata
-
-class MyNotifier : ProgressNotifier {
-    override fun notify(update: Progress, extra: String?) {
-        println("Progress update: '${update.progress}%' with extra: '$extra'")
+class MyNotifier(
+    private val name: String
+) : ProgressNotifier {
+    override suspend fun notify(update: Progress, extra: String?) = coroutineScope {
+        println("Progress update: '${update.progress}%' with extra: '$extra' from: '$name'")
     }
 
-    override fun compose(): ProgressNotifier {
-        return MyNotifier()
+    override fun compose(old: ProgressNotifier): ProgressNotifier {
+        return this
     }
 }
 
 class TestProgressNotification {
+    fun context(name: String, influence: Int) : CoroutineContext {
+        return CoroutineName(name) + WeightedProgressTracker(influence) + SimpleLogger(name) + holdElement(MyNotifier(""))
+    }
+
     @Test
     fun `Test basic print notifications`() {
-        val context = MyContext(
-            WeightedProgressTracker(MyNotifier())
-        )
+        runBlocking {
+            job<Unit, Nothing>(context("The first one", 0)) {
+                progress.weight = 6
 
-        newWorkload(context) {
-            progress.weight = 6
-
-            with(MyContextStub(4)) { _ : NewJobReference<Nothing> ->
-                progress.weight = 100
-
-                blocking {
-                    delay(500)
-                    progress.status(Progress.from(0.5f)) {"From sub"}
-                    delay(500)
-                    progress.status(Progress.from(0.5f)) {"From sub"}
+                val job2 = job<String, Nothing>(context("Second job", 2)) {
+                    delay(1000)
+                    "This is from the second job"
                 }
-            }
-            progress.status(Progress.from(0.5f)) {"From super"}
 
-            blocking {
-                delay(1000)
-            }
-            progress.status(Progress.from(0.5f)){"From super"}
+                val job3 = job<String, Nothing>(context("Third job?", 2)) {
+                    delay(5000)
+                    "This is from the third job"
+                }
+
+                println(job2.await().orNull()!!)
+                println(job3.await().orNull()!!)
+
+            }.join()
         }
     }
 }

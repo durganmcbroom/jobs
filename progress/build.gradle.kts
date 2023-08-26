@@ -43,6 +43,7 @@ kotlin {
             dependencies {
                 implementation(project(":"))
                 implementation(project(":logging"))
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
             }
         }

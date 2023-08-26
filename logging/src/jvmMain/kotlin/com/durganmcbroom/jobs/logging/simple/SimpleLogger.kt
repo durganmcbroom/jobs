@@ -1,8 +1,11 @@
 package com.durganmcbroom.jobs.logging.simple
 
-import com.durganmcbroom.jobs.holdElement
+import com.durganmcbroom.jobs.BasicJobElementFactory
 import com.durganmcbroom.jobs.logging.LogLevel
 import com.durganmcbroom.jobs.logging.Logger
+import com.durganmcbroom.jobs.logging.LoggerFactory
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.coroutineScope
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -10,13 +13,26 @@ import java.util.logging.Handler
 import java.util.logging.Level
 import java.util.logging.LogManager
 import java.util.logging.LogRecord
-import kotlin.coroutines.CoroutineContext
 import java.util.logging.Level as JavaLevel
 import java.util.logging.Logger as JavaLogger
 
-public fun SimpleLogger(name: String) : CoroutineContext {
-    return holdElement(SimpleLogger(SimpleLogger.createLogger(name)))
-}
+public fun SimpleLoggerFactory() : LoggerFactory = object : BasicJobElementFactory<Logger>(listOf(), {
+    coroutineScope {
+            val name = coroutineContext[CoroutineName]?.name
+                ?: throw IllegalArgumentException("Cant find the job name! Make sure you add CoroutineName to the coroutine context.")
+
+            SimpleLogger(SimpleLogger.createLogger(name))
+        }
+}), LoggerFactory {}
+//    retur/n BasicJobElementFactory("SimpleLogger") {
+//        coroutineScope {
+//            val name = coroutineContext[CoroutineName]?.name
+//                ?: throw IllegalArgumentException("Cant find the job name! Make sure you add CoroutineName to the coroutine context.")
+//
+//            SimpleLogger(SimpleLogger.createLogger(name))
+//        }
+//    }
+//}
 
 private class SimpleLogger (
     val realLogger: JavaLogger
@@ -87,10 +103,6 @@ private class SimpleLogger (
         val l = dmLevelToJavaLevel(level)
 
         realLogger.log(l, msg)
-    }
-
-    override fun compose(old: Logger): Logger {
-        return this
     }
 
     private fun dmLevelToJavaLevel(level: LogLevel): JavaLevel? = when (level) {

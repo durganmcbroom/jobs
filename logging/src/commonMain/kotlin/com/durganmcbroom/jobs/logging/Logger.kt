@@ -1,12 +1,13 @@
 package com.durganmcbroom.jobs.logging
 
 import com.durganmcbroom.jobs.JobElement
+import com.durganmcbroom.jobs.JobElementFactory
 import com.durganmcbroom.jobs.JobElementKey
 import com.durganmcbroom.jobs.jobElement
 import kotlinx.coroutines.CoroutineScope
 import kotlin.coroutines.CoroutineContext
 
-public interface Logger : JobElement<Logger> {
+public interface Logger : JobElement {
     override val key: JobElementKey<Logger>
         get() = Logger
     public val name: String
@@ -14,7 +15,18 @@ public interface Logger : JobElement<Logger> {
 
     public fun log(level: LogLevel, msg: String)
 
-    public companion object : JobElementKey<Logger>
+    public companion object : JobElementKey<Logger> {
+        override val name: String = "Logger"
+    }
+}
+
+public interface LoggerFactory : JobElementFactory {
+    override val key: JobElementKey<out JobElementFactory>
+        get() = LoggerFactory
+
+    public companion object : JobElementKey<LoggerFactory> {
+        override val name: String = "Logger Factory"
+    }
 }
 
 public enum class LogLevel {

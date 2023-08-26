@@ -1,8 +1,6 @@
 package com.durganmcbroom.jobs
 
-import kotlin.jvm.JvmInline
-
-public sealed class JobOutput<out T, out E> {
+public sealed class JobResult<out T, out E> {
     public fun wasSuccess() : Boolean = this is Success
 
     public fun wasFailure() : Boolean = this is Failure
@@ -11,22 +9,22 @@ public sealed class JobOutput<out T, out E> {
 
     public fun failureOrNull(): E? = (this as? Failure<E>)?.output
 
-    public fun <C> map(transform: (T) -> C) : JobOutput<C, E> {
+    public fun <C> map(transform: (T) -> C) : JobResult<C, E> {
         @Suppress("unchecked_cast")
-        val output = orNull() ?: return this as JobOutput<C, E>
+        val output = orNull() ?: return this as JobResult<C, E>
 
         return Success(transform(output))
     }
-    public fun <C> mapFailure(transform: (E) -> C) : JobOutput<T, C> {
+    public fun <C> mapFailure(transform: (E) -> C) : JobResult<T, C> {
         @Suppress("unchecked_cast")
-        val output = failureOrNull() ?: return this as JobOutput<T, C>
+        val output = failureOrNull() ?: return this as JobResult<T, C>
 
         return Failure(transform(output))
     }
 
     public data class Success<T>(
         val output: T
-    ) : JobOutput<T, Nothing>() {
+    ) : JobResult<T, Nothing>() {
         override fun toString(): String {
             return "Success($output)"
         }
@@ -34,7 +32,7 @@ public sealed class JobOutput<out T, out E> {
 
     public data class Failure<E>(
         val output: E
-    ) : JobOutput<Nothing, E>() {
+    ) : JobResult<Nothing, E>() {
         override fun toString(): String {
             return "Failure($output)"
         }

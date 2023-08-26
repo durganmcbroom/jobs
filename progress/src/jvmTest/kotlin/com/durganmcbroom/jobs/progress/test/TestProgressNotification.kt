@@ -2,10 +2,11 @@ package com.durganmcbroom.jobs.progress.test
 
 import com.durganmcbroom.jobs.holdElement
 import com.durganmcbroom.jobs.job
-import com.durganmcbroom.jobs.logging.simple.SimpleLogger
-import com.durganmcbroom.jobs.logging.simple.newSimpleLogger
-import com.durganmcbroom.jobs.newWorkload
-import com.durganmcbroom.jobs.progress.*
+import com.durganmcbroom.jobs.logging.simple.SimpleLoggerFactory
+import com.durganmcbroom.jobs.progress.Progress
+import com.durganmcbroom.jobs.progress.ProgressNotifier
+import com.durganmcbroom.jobs.progress.WeightedProgressTracker
+import com.durganmcbroom.jobs.progress.progress
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -42,7 +43,7 @@ class MyNotifier(
 
 class TestProgressNotification {
     fun context(name: String, influence: Int) : CoroutineContext {
-        return CoroutineName(name) + WeightedProgressTracker(influence) + SimpleLogger(name) + holdElement(MyNotifier(""))
+        return CoroutineName(name) + WeightedProgressTracker(influence) + SimpleLoggerFactory(name) + holdElement(MyNotifier(""))
     }
 
     @Test

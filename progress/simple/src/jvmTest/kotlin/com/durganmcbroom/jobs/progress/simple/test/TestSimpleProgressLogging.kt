@@ -1,11 +1,12 @@
 package com.durganmcbroom.jobs.progress.simple.test
 
+import com.durganmcbroom.jobs.JobName
 import com.durganmcbroom.jobs.job
-import com.durganmcbroom.jobs.logging.simple.SimpleLogger
-import com.durganmcbroom.jobs.logging.simple.newSimpleLogger
-import com.durganmcbroom.jobs.newWorkload
-import com.durganmcbroom.jobs.progress.WeightedProgressTracker
-import com.durganmcbroom.jobs.progress.simple.SimpleProgressNotifier
+import com.durganmcbroom.jobs.logging.simple.SimpleLoggerFactory
+import com.durganmcbroom.jobs.progress.JobWeight
+import com.durganmcbroom.jobs.progress.WeightedProgressTrackerFactory
+import com.durganmcbroom.jobs.progress.simple.SimpleProgressNotifierFactory
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 
 //class MyContext(
@@ -34,10 +35,16 @@ import kotlin.test.Test
 class TestSimpleProgressLogging {
     @Test
     fun `Test simple progress logging`() {
-        newWorkload(SimpleProgressNotifier()) {
-            job<Unit, Nothing>(SimpleLogger("First job") + WeightedProgressTracker()) {
+        runBlocking(SimpleProgressNotifierFactory() + WeightedProgressTrackerFactory() + SimpleLoggerFactory()) {
+            job<Unit, Nothing>(JobName("First job")) {
                 println("Hi")
-            }.join()
+
+                job<Unit, Nothing>(JobName("Second job") + JobWeight(5)) {
+                    println("Hey")
+                }
+
+                Unit
+            }
         }
     }
 }

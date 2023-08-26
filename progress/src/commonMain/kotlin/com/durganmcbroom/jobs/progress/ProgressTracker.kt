@@ -3,14 +3,22 @@ package com.durganmcbroom.jobs.progress
 import com.durganmcbroom.jobs.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
-import kotlin.coroutines.CoroutineContext
 import kotlin.jvm.JvmStatic
 import kotlin.math.abs
 import kotlin.math.min
 
 public typealias ProgressListener = suspend (Progress) -> Unit
 
-public interface ProgressTracker : JobLifecycleElement<ProgressTracker> {
+public interface ProgressTrackerFactory : JobElementFactory {
+    override val key: JobElementKey<out JobElementFactory>
+        get() = ProgressTrackerFactory
+
+    public companion object : JobElementKey<ProgressTrackerFactory> {
+        override val name: String = "Progress Tracker factory"
+    }
+}
+
+public interface ProgressTracker : JobElement {
     override val key: JobElementKey<ProgressTracker> get() = ProgressTracker
 
     public var weight: Int // Default should be 1
@@ -25,7 +33,11 @@ public interface ProgressTracker : JobLifecycleElement<ProgressTracker> {
 
     public suspend fun finish()
 
-    public companion object : JobElementKey<ProgressTracker>
+    public companion object : JobElementKey<ProgressTracker> {
+        override val name: String = "Progress Tracker"
+    }
+
+
 }
 
 public val CoroutineScope.progress : ProgressTracker

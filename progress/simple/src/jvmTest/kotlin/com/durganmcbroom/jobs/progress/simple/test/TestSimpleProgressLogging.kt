@@ -6,6 +6,7 @@ import com.durganmcbroom.jobs.logging.simple.SimpleLoggerFactory
 import com.durganmcbroom.jobs.progress.JobWeight
 import com.durganmcbroom.jobs.progress.WeightedProgressTrackerFactory
 import com.durganmcbroom.jobs.progress.simple.SimpleProgressNotifierFactory
+import com.durganmcbroom.jobs.progress.status
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 
@@ -41,6 +42,14 @@ class TestSimpleProgressLogging {
 
                 job<Unit, Nothing>(JobName("Second job") + JobWeight(5)) {
                     println("Hey")
+                    status(0.5f)
+                    println("Hye fro here")
+                }
+
+                job<Unit, Nothing>(JobName("Third job") + JobWeight(2)) {
+                    for (i in 0 until 100) {
+                        status(0.01f)
+                    }
                 }
 
                 Unit

@@ -8,16 +8,29 @@ import com.durganmcbroom.jobs.progress.Progress
 import com.durganmcbroom.jobs.progress.ProgressNotifier
 import com.durganmcbroom.jobs.progress.ProgressNotifierFactory
 import kotlinx.coroutines.coroutineScope
+import kotlin.math.exp
 import kotlin.math.floor
+import kotlin.math.pow
 
-public fun SimpleProgressNotifierFactory(): ProgressNotifierFactory =
+public fun SimpleProgressNotifierFactory(
+    precision: Int = 4,
+    interval: Float = 0f
+): ProgressNotifierFactory =
     object : BasicJobElementFactory<ProgressNotifier>(listOf(LoggerFactory), {
-         InternalSimpleProgressNotifier()
+        InternalSimpleProgressNotifier(precision, interval)
     }), ProgressNotifierFactory {}
 
-private class InternalSimpleProgressNotifier: ProgressNotifier {
+private class InternalSimpleProgressNotifier(
+    private val precision: Int,
+    private val interval: Float
+) : ProgressNotifier {
+    private var lastUpdate = 0.0f
+
     override suspend fun notify(update: Progress, extra: String?) {
         coroutineScope {
+            if (lastUpdate + interval > update.progress) return@coroutineScope
+            lastUpdate = update.progress
+
             val message = extra?.let { " : $it" } ?: "."
 
             if (update.progress == 0f) {
@@ -25,7 +38,10 @@ private class InternalSimpleProgressNotifier: ProgressNotifier {
             } else if (update.finished) {
                 logger.log(LogLevel.INFO, "Job has finished$message")
             } else {
-                logger.log(LogLevel.INFO, "Job is ${floor(update.progress * 100)}% done$message")
+                logger.log(
+                    LogLevel.INFO,
+                    "Job is ${floor(10.0.pow(precision) * update.progress * 100) / 10.0.pow(precision)}% done$message"
+                )
             }
         }
     }

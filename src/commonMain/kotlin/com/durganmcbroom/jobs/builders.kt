@@ -1,73 +1,142 @@
+@file:JvmName("Builders")
+
 package com.durganmcbroom.jobs
 
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
-
+import kotlinx.coroutines.*
+import java.lang.IllegalArgumentException
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 private class JobThrowable(
     val err: Any?
 ) : Throwable()
 
-public class NewJobReference<E> {
-    public fun earlyReturn(err: E): Nothing {
+public class JobScope<E> internal constructor(
+    private val delegate: CoroutineScope
+) : CoroutineScope by delegate {
+    public fun fail(err: E): Nothing {
         throw JobThrowable(err)
     }
+
+    public fun <T> JobResult<T, E>.attempt(): T = when (this) {
+        is JobResult.Failure<E> -> fail(output)
+        is JobResult.Success<T> -> output
+    }
 }
 
-public fun <
-        C : JobContext<*>,
-        T,
-        E> newJob(scope: C.(ref: NewJobReference<E>) -> T): Job<C, JobOutput<T, E>> {
+public fun <T, E> Job(block: suspend CoroutineScope.() -> JobResult<T, E>): Job<T, E> = object : Job<T, E> {
+    override suspend fun invoke(): JobResult<T, E> = coroutineScope(block)
+}
 
-    return Job { context ->
-        val run = runCatching { context.scope(NewJobReference()) }
+public suspend fun <T, E> job(
+    context: CoroutineContext = EmptyCoroutineContext,
+    block: suspend JobScope<E>.() -> T
+): JobResult<T, E> {
+    val job = Job {
+        val result = runCatching {
+            JobScope<E>(this@Job).block()
+        }
 
-        val output = if (run.isSuccess) {
-            JobOutput.Success(run.getOrNull()!!)
-        } else {
-            val exception = run.exceptionOrNull()
+        if (result.isSuccess) JobResult.Success(result.getOrNull()!!)
+        else {
+            val exception = result.exceptionOrNull()
             val err = (exception as? JobThrowable)?.err ?: throw (exception
                 ?: IllegalStateException("Job was not successful however there is also no error thrown."))
-            JobOutput.Failure(err as E)
+            JobResult.Failure(err as E)
         }
-
-        (context.orchestrator as? ExecutableJobOrchestrator<*>)?.orchestrate()
-
-        output
     }
+
+    return job(context, job)
 }
 
-public fun <C : JobContext<*>, T : Any> newJobCatching(scope: C.(ref: NewJobReference<Throwable>) -> T): Job<C, JobOutput<T, Throwable>> {
-    return newJob { ref ->
+public suspend fun <T, E> job(
+    context: CoroutineContext = EmptyCoroutineContext,
+    job: Job<T, E>
+): JobResult<T, E> = withContext(context) {
+    val factories = coroutineContext.fold(ArrayList<JobElementFactory>()) { acc, it: CoroutineContext.Element ->
+        if (it is JobElementFactory) {
+            acc.add(it)
+        }
+        acc
+    }
+
+    topologicalSort(factories)
+        .reversed()
+        .fold(job) {acc, it ->
+        it.apply(acc)
+    }()
+}
+
+public suspend fun <T> jobCatching(
+    context: CoroutineContext = EmptyCoroutineContext,
+    block: suspend JobScope<Throwable>.() -> T
+): JobResult<T, Throwable> {
+    val catchingJob = Job {
+        val jobScope = JobScope<Throwable>(this)
+
         val result = runCatching {
-            scope(ref)
+            jobScope.block()
         }
 
-        if (result.isFailure) ref.earlyReturn(result.exceptionOrNull()!!)
+        if (result.isSuccess) JobResult.Success(result.getOrNull()!!)
         else {
-            result.getOrNull() ?: throw IllegalStateException("Job was successful however there is no result value!")
+            val exception = result.exceptionOrNull()
+            val err = ((exception as? JobThrowable)?.err as? Throwable) ?: exception
+            ?: IllegalStateException("Job was not successful however there is also no error thrown.")
+            JobResult.Failure(err)
         }
     }
+
+    return job(context, catchingJob)
 }
 
-public fun <C : JobContext<*>, T> newWorkload(
-    context: C,
-    scope: C.() -> T
-): T {
-    return context.scope()
-}
+private fun topologicalSort(factories: List<JobElementFactory>) : List<JobElementFactory> {
+    val factoryMap = factories.associateBy(JobElementFactory::key)
 
-public fun <S : CompositionStub, C : JobContext<S>, O : JobOutput<*, *>> C.with(
-    stub: S,
-    job: Job<C, O>
-): JobSupervisor<C, O> {
-    return orchestrator.register(stub, job)
-}
+    val stack = ArrayList<JobElementFactory>(factories.size)
+    val visited = HashSet<JobElementKey<*>>(factories.size)
 
-public fun <S : CompositionStub, C : JobContext<S>, T, E> C.with(
-    stub: S,
-    scope: C.(ref: NewJobReference<E>) -> T
-): JobSupervisor<C, JobOutput<T, E>> {
-    return orchestrator.register(stub, newJob(scope))
+    // Uses up more memory(a very small amount) but is very quick
+    data class Trace(
+        private val ordered: MutableList<JobElementKey<out JobElementFactory>>,
+        private val set: MutableSet<JobElementKey<out JobElementFactory>>
+    ) {
+        fun push(key: JobElementKey<out JobElementFactory>) {
+            ordered.add(key)
+            if (!set.add(key)) {
+                throw IllegalArgumentException(
+                    "The following JobElementFactories have cyclic dependencies. The cyclic trace is as follows:\n${
+                         ordered.joinToString(separator = " -> ") {it.name}
+                    }"
+                )
+            }
+        }
+
+        fun pop() {
+           set.remove(ordered.removeAt(ordered.size - 1))
+        }
+    }
+
+    fun recursivelySort(factory: JobElementFactory, trace: Trace) {
+        trace.push(factory.key)
+        if (!visited.add(factory.key)) return
+
+        for (dependency in factory.dependencies) {
+            recursivelySort(factoryMap[dependency]
+                ?: throw IllegalArgumentException("Factory: '${factory.key.name}' " +
+                        "required other type: '${dependency.name}' to be installed in " +
+                        "the current context and it was not found!"), trace)
+        }
+
+        trace.pop()
+        stack.add(factory)
+    }
+
+    for (factory in factories) {
+        recursivelySort(factory, Trace(
+            ArrayList(), HashSet()
+        ))
+    }
+
+    return stack
 }

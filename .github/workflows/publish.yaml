@@ -1,0 +1,21 @@
+name: publish
+on:
+  push:
+    branches: [dev]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: publish
+    steps:
+      - name: Cloning Repo
+        uses: actions/checkout@v3
+      - name: Setting up Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: 'gradle'
+      - name: Grant permissions to Gradle
+        run: chmod +x gradlew
+      - name: Publish with Gradle
+        run: ./gradlew publishAll -Pmaven.user=${{ secrets.USER }} -Pmaven.key=${{ secrets.USER_KEY }} --no-daemon

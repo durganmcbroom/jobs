@@ -1,8 +1,5 @@
 plugins {
-//    kotlin("multiplatform") version "1.8.20
-//    "
-    kotlin("jvm")// version "1.7.10"
-
+    kotlin("jvm")
 }
 
 group = "com.durganmcbroom"
@@ -14,7 +11,6 @@ repositories {
 
 val runtime by configurations.creating
 
-
 tasks.jar {
     manifest {
         attributes["Main-Class"] = "com.durganmcbroom.jobs.progress.bars.BarProgressNotifierKt"
@@ -25,7 +21,6 @@ tasks.jar {
         runtime.map { if (it.isDirectory) it else zipTree(it) }.toSet()
     )
 }
-
 
 dependencies {
     implementation(kotlin("stdlib"))
@@ -39,34 +34,39 @@ dependencies {
 kotlin {
     explicitApi()
 }
-//    jvm {
-//        jvmToolchain(17)
-//        withJava()
-//        testRuns["test"].executionTask.configure {
-//            useJUnitPlatform()
-//        }
+
+//publishing {
+//    publications.withType<MavenPublication> {
+//        artifact(tasks["javadocJar"])
 //
-//        val main by compilations.getting {
-//            compileKotlinTask.destinationDirectory.set(compileJavaTaskProvider!!.get().destinationDirectory.asFile.get())
+//        pom {
+//            packaging = "jar"
 //
-//            compileJavaTaskProvider!!.get().run {
-//                targetCompatibility = "17"
-//                sourceCompatibility = "17"
+//            developers {
+//                developer {
+//                    id.set("durganmcbroom")
+//                    name.set("Durgan McBroom")
+//                }
 //            }
-//        }
-//    }
 //
-//    sourceSets {
-//        val jvmMain by getting {
-//            dependencies {
-//                implementation(project(":"))
-//                implementation(project(":progress"))
+//            withXml {
+//                val repositoriesNode = asNode().appendNode("repositories")
+//                val yakclientRepositoryNode = repositoriesNode.appendNode("repository")
+//                yakclientRepositoryNode.appendNode("id", "yakclient")
+//                yakclientRepositoryNode.appendNode("url", "http://maven.yakclient.net/snapshots")
 //            }
-//        }
-//        val jvmTest by getting {
-//            dependencies {
-//                implementation(kotlin("test"))
 //
+//            licenses {
+//                license {
+//                    name.set("MIT License")
+//                    url.set("https://opensource.org/licenses/MIT")
+//                }
+//            }
+//
+//            scm {
+//                connection.set("scm:git:git://github.com/durganmcbroom/jobs")
+//                developerConnection.set("scm:git:ssh://github.com:durganmcbroom/jobs")
+//                url.set("https://github.com/durganmcbroom/jobs")
 //            }
 //        }
 //    }

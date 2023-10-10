@@ -1,9 +1,11 @@
 package com.durganmcbroom.jobs.logging.simple
 
+import com.durganmcbroom.jobs.BasicJobElementFactory
 import com.durganmcbroom.jobs.logging.LogLevel
 import com.durganmcbroom.jobs.logging.Logger
-import java.io.PrintWriter
-import java.io.StringWriter
+import com.durganmcbroom.jobs.logging.LoggerFactory
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.coroutineScope
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -14,13 +16,29 @@ import java.util.logging.LogRecord
 import java.util.logging.Level as JavaLevel
 import java.util.logging.Logger as JavaLogger
 
+public fun SimpleLoggerFactory() : LoggerFactory = object : BasicJobElementFactory<Logger>(listOf(), {
+    coroutineScope {
+            val name = coroutineContext[CoroutineName]?.name
+                ?: throw IllegalArgumentException("Cant find the job name! Make sure you add CoroutineName to the coroutine context.")
 
-public class SimpleLogger private constructor(
-    public val realLogger: JavaLogger
+            SimpleLogger(SimpleLogger.createLogger(name))
+        }
+}), LoggerFactory {}
+//    retur/n BasicJobElementFactory("SimpleLogger") {
+//        coroutineScope {
+//            val name = coroutineContext[CoroutineName]?.name
+//                ?: throw IllegalArgumentException("Cant find the job name! Make sure you add CoroutineName to the coroutine context.")
+//
+//            SimpleLogger(SimpleLogger.createLogger(name))
+//        }
+//    }
+//}
+
+private class SimpleLogger (
+    val realLogger: JavaLogger
 ) : Logger {
-    public constructor(name: String) : this(createLogger(name))
-    private companion object {
-        private fun createLogger(name: String) : JavaLogger {
+    companion object {
+        fun createLogger(name: String) : JavaLogger {
             LogManager.getLogManager().reset()
             val rootLogger: JavaLogger = LogManager.getLogManager().getLogger("")
 
@@ -52,14 +70,13 @@ public class SimpleLogger private constructor(
 
             rootLogger.addHandler(value)
 
-
             return JavaLogger.getLogger(name)
         }
     }
 
     override val name: String by realLogger::name
 
-    private infix fun getLevel(logger: java.util.logging.Logger): LogLevel {
+    private infix fun getLevel(logger: JavaLogger): LogLevel {
         fun mapLevel(level: JavaLevel): LogLevel = when (level) {
             JavaLevel.INFO -> LogLevel.INFO
             JavaLevel.FINE -> LogLevel.DEBUG
@@ -96,3 +113,4 @@ public class SimpleLogger private constructor(
         LogLevel.CRITICAL -> JavaLevel.SEVERE
     }
 }
+

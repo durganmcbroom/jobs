@@ -28,6 +28,22 @@ public fun <T, E> Job(block: suspend CoroutineScope.() -> JobResult<T, E>): Job<
     override suspend fun invoke(): JobResult<T, E> = coroutineScope(block)
 }
 
+public suspend fun <T, E> jobScope(
+    block: suspend JobScope<E>.() -> T
+) : JobResult<T, E> = coroutineScope {
+    val result = runCatching {
+        JobScope<E>(this@coroutineScope).block()
+    }
+
+    if (result.isSuccess) JobResult.Success(result.getOrNull()!!)
+    else {
+        val exception = result.exceptionOrNull()
+        val err = (exception as? JobThrowable)?.err ?: throw (exception
+            ?: IllegalStateException("Job was not successful however there is also no error thrown."))
+        JobResult.Failure(err as E)
+    }
+}
+
 public suspend fun <T, E> job(
     context: CoroutineContext = EmptyCoroutineContext,
     block: suspend JobScope<E>.() -> T

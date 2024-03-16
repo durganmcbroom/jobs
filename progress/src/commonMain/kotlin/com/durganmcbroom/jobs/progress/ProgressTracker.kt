@@ -7,19 +7,19 @@ import kotlin.jvm.JvmStatic
 import kotlin.math.abs
 import kotlin.math.min
 
-public typealias ProgressListener = suspend (Progress) -> Unit
+public typealias ProgressListener = (Progress) -> Unit
 
-public interface ProgressTrackerFactory : JobElementFactory {
-    override val key: JobElementKey<out JobElementFactory>
+public interface ProgressTrackerFactory : JobFacetFactory {
+    override val key: JobContext.Key<ProgressTrackerFactory>
         get() = ProgressTrackerFactory
 
-    public companion object : JobElementKey<ProgressTrackerFactory> {
+    public companion object : JobContext.Key<ProgressTrackerFactory> {
         override val name: String = "Progress Tracker factory"
     }
 }
 
-public interface ProgressTracker : JobElement {
-    override val key: JobElementKey<ProgressTracker> get() = ProgressTracker
+public interface ProgressTracker : JobContext.Facet {
+    override val key: JobContext.Key<ProgressTracker> get() = ProgressTracker
 
     public var weight: Int // Default should be 1
     public val progress: Progress
@@ -27,24 +27,24 @@ public interface ProgressTracker : JobElement {
 
     public fun registerChild(child: ProgressTracker, influence: Int)
 
-    public suspend fun status(progress: Progress, msg: String?)
+    public fun status(progress: Progress, msg: String?)
 
     public fun registerListener(listener: ProgressListener)
 
-    public suspend fun finish()
+    public fun finish()
 
-    public companion object : JobElementKey<ProgressTracker> {
+    public companion object : JobContext.Key<ProgressTracker> {
         override val name: String = "Progress Tracker"
     }
 
 
 }
 
-public val CoroutineScope.progress : ProgressTracker
-    get() = jobElement(ProgressTracker)
+public val JobScope.progress : ProgressTracker
+    get() = facet(ProgressTracker)
 
-public suspend fun status(progress: Float, msg: () -> String? = {null}): Unit = coroutineScope {
-    this.progress.status(Progress.from(progress), msg())
+public fun JobScope.status(progress: Float, msg: () -> String? = {null}): Unit {
+    facet(ProgressTracker).status(Progress.from(progress), msg())
 }
 
 public class Progress private constructor(

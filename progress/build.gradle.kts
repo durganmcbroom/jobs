@@ -1,9 +1,8 @@
 plugins {
-    kotlin("multiplatform") version "1.8.20"
+    kotlin("multiplatform")
 }
 
 group = "com.durganmcbroom"
-version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -44,7 +43,6 @@ kotlin {
                 implementation(project(":"))
                 implementation(project(":logging"))
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-
             }
         }
         val commonTest by getting {
@@ -55,6 +53,7 @@ kotlin {
         val jvmMain by getting
         val jvmTest by getting {
             dependencies {
+                implementation(project(":progress:simple"))
             }
         }
     }

@@ -1,30 +1,25 @@
 package com.durganmcbroom.jobs.logging
 
-import com.durganmcbroom.jobs.JobElement
-import com.durganmcbroom.jobs.JobElementFactory
-import com.durganmcbroom.jobs.JobElementKey
-import com.durganmcbroom.jobs.jobElement
-import kotlinx.coroutines.CoroutineScope
-import kotlin.coroutines.CoroutineContext
+import com.durganmcbroom.jobs.*
 
-public interface Logger : JobElement {
-    override val key: JobElementKey<Logger>
+public interface Logger : JobContext.Facet {
+    override val key: JobContext.Key<Logger>
         get() = Logger
     public val name: String
     public var level: LogLevel
 
     public fun log(level: LogLevel, msg: String)
 
-    public companion object : JobElementKey<Logger> {
+    public companion object : JobContext.Key<Logger> {
         override val name: String = "Logger"
     }
 }
 
-public interface LoggerFactory : JobElementFactory {
-    override val key: JobElementKey<out JobElementFactory>
+public interface LoggerFactory : JobFacetFactory {
+    override val key: JobContext.Key<LoggerFactory>
         get() = LoggerFactory
 
-    public companion object : JobElementKey<LoggerFactory> {
+    public companion object : JobContext.Key<LoggerFactory> {
         override val name: String = "Logger Factory"
     }
 }
@@ -37,15 +32,15 @@ public enum class LogLevel {
     CRITICAL
 }
 
-public val CoroutineScope.logger : Logger
-    get() = jobElement(Logger)
+public val JobScope.logger : Logger
+    get() = facet(Logger)
 
-public fun CoroutineScope.info(msg: String): Unit = logger.log(LogLevel.INFO, msg)
+public fun JobScope.info(msg: String): Unit = logger.log(LogLevel.INFO, msg)
 
-public fun CoroutineScope.debug(msg: String): Unit = logger.log(LogLevel.DEBUG, msg)
+public fun JobScope.debug(msg: String): Unit = logger.log(LogLevel.DEBUG, msg)
 
-public fun CoroutineScope.warning(msg: String): Unit = logger.log(LogLevel.WARNING, msg)
+public fun JobScope.warning(msg: String): Unit = logger.log(LogLevel.WARNING, msg)
 
-public fun CoroutineScope.error(msg: String): Unit = logger.log(LogLevel.ERROR, msg)
+public fun JobScope.error(msg: String): Unit = logger.log(LogLevel.ERROR, msg)
 
-public fun CoroutineScope.critical(msg: String): Unit = logger.log(LogLevel.CRITICAL, msg)
+public fun JobScope.critical(msg: String): Unit = logger.log(LogLevel.CRITICAL, msg)

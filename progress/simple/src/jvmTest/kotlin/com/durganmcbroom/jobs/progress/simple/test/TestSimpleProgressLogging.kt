@@ -2,12 +2,12 @@ package com.durganmcbroom.jobs.progress.simple.test
 
 import com.durganmcbroom.jobs.JobName
 import com.durganmcbroom.jobs.job
+import com.durganmcbroom.jobs.launch
 import com.durganmcbroom.jobs.logging.simple.SimpleLoggerFactory
 import com.durganmcbroom.jobs.progress.JobWeight
 import com.durganmcbroom.jobs.progress.WeightedProgressTrackerFactory
 import com.durganmcbroom.jobs.progress.simple.SimpleProgressNotifierFactory
 import com.durganmcbroom.jobs.progress.status
-import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 
 //class MyContext(
@@ -36,17 +36,17 @@ import kotlin.test.Test
 class TestSimpleProgressLogging {
     @Test
     fun `Test simple progress logging`() {
-        runBlocking(SimpleProgressNotifierFactory() + WeightedProgressTrackerFactory() + SimpleLoggerFactory()) {
-            job<Unit, Nothing>(JobName("First job")) {
+        launch(SimpleProgressNotifierFactory() + WeightedProgressTrackerFactory() + SimpleLoggerFactory()) {
+            job(JobName("First job")) {
                 println("Hi")
 
-                job<Unit, Nothing>(JobName("Second job") + JobWeight(5)) {
+                job(JobName("Second job") + JobWeight(5)) {
                     println("Hey")
                     status(0.5f)
                     println("Hye fro here")
                 }
 
-                job<Unit, Nothing>(JobName("Third job") + JobWeight(2)) {
+                job(JobName("Third job") + JobWeight(2)) {
                     for (i in 0 until 100) {
                         status(0.01f)
                     }

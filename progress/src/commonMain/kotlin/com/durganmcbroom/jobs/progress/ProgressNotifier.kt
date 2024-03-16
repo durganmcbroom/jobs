@@ -1,27 +1,24 @@
 package com.durganmcbroom.jobs.progress
 
-import com.durganmcbroom.jobs.BasicJobElementFactory
-import com.durganmcbroom.jobs.JobElement
-import com.durganmcbroom.jobs.JobElementFactory
-import com.durganmcbroom.jobs.JobElementKey
-import kotlin.coroutines.CoroutineContext
+import com.durganmcbroom.jobs.*
+import com.durganmcbroom.jobs.logging.Logger
 
-public interface ProgressNotifierFactory: JobElementFactory {
-    override val key: JobElementKey<out JobElementFactory>
+public interface ProgressNotifierFactory: JobFacetFactory {
+    override val key: JobContext.Key<ProgressNotifierFactory>
         get() = ProgressNotifierFactory
 
-    public companion object : JobElementKey<ProgressNotifierFactory> {
+    public companion object : JobContext.Key<ProgressNotifierFactory> {
         override val name: String = "Progress notifier factory"
     }
 }
 
-public interface ProgressNotifier : JobElement {
-    override val key: JobElementKey<ProgressNotifier>
+public interface ProgressNotifier : JobContext.Facet {
+    override val key: JobContext.Key<ProgressNotifier>
         get() = ProgressNotifier
 
-    public suspend fun notify(update: Progress, extra: String?)
+    public fun notify(update: Progress, extra: String?, logger: Logger)
 
-    public companion object : JobElementKey<ProgressNotifier> {
+    public companion object : JobContext.Key<ProgressNotifier> {
         override val name: String = "Progress Notifier"
     }
 }

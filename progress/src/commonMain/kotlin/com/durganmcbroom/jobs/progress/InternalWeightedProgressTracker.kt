@@ -1,6 +1,7 @@
 package com.durganmcbroom.jobs.progress
 
 import com.durganmcbroom.jobs.*
+import com.durganmcbroom.jobs.logging.Logger
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
@@ -10,41 +11,43 @@ import kotlin.coroutines.coroutineContext
 
 public data class JobWeight(
     val weight: Int
-) : JobElement {
-    override val key: JobElementKey<JobWeight> = JobWeight
+) : JobContext.Facet {
+    override val key: JobContext.Key<JobWeight> = JobWeight
 
-    public companion object : JobElementKey<JobWeight> {
+    public companion object : JobContext.Key<JobWeight> {
         override val name: String = "Job weight"
     }
 }
 
-public class WeightedProgressTrackerFactory: ProgressTrackerFactory {
-    override val dependencies: List<JobElementKey<out JobElementFactory>> = listOf(
+public class WeightedProgressTrackerFactory : ProgressTrackerFactory {
+    override val dependencies: List<JobContext.Key<out JobFacetFactory>> = listOf(
         ProgressNotifierFactory
     )
 
-    override fun <T, E> apply(job: Job<T, E>): Job<T, E> {
-        return Job {
-            val currentTracker = coroutineContext[ProgressTracker]
 
-            val childTracker = InternalWeightedProgressTracker(coroutineContext)
-            val childWeight = coroutineContext[JobWeight]?.weight ?: 1
+    override fun <T> apply(job: Job<T>, oldContext: JobContext): Job<T> = Job {
+        val currentTracker = context[ProgressTracker]
 
-            currentTracker?.registerChild(childTracker, childWeight)
+        val childTracker = InternalWeightedProgressTracker(
+            facet(ProgressNotifier),
+            facet(Logger)
+        )
+        val childWeight = context[JobWeight]?.weight ?: 1
 
-            withContext(childTracker) {
-                status(0f)
-                val output = job()
-                progress.finish()
-                output
-            }
+        currentTracker?.registerChild(childTracker, childWeight)
+
+        withContext(childTracker) {
+            status(0f)
+            val output = job()
+            progress.finish()
+            output
         }
     }
 }
 
 private class InternalWeightedProgressTracker(
-    // The influence over a parent
-    private val context: CoroutineContext
+    private val progressNotifier: ProgressNotifier,
+    private val logger: Logger
 ) : ProgressTracker {
     override var weight: Int = 1
         set(value) {
@@ -59,16 +62,15 @@ private class InternalWeightedProgressTracker(
     private val listeners = ArrayList<ProgressListener>()
     private var totalWeight: Int = weight
 
-    private suspend fun updateProgress(update: Progress, pWeight: Int, notification: String?) {
+    private fun updateProgress(update: Progress, pWeight: Int, notification: String?) {
         if (this.progress.finished) return
 
         val new = (pWeight.toFloat() / totalWeight.toFloat()) * update.progress
         this.progress = Progress.from(this.progress.progress + new)
-        withContext(context) {
-            jobElement(ProgressNotifier).notify(this@InternalWeightedProgressTracker.progress, notification)
 
-            listeners.forEach { it(Progress.from(new)) }
-        }
+        progressNotifier.notify(this@InternalWeightedProgressTracker.progress, notification, logger)
+
+        listeners.forEach { it(Progress.from(new)) }
     }
 
 
@@ -81,7 +83,7 @@ private class InternalWeightedProgressTracker(
         }
     }
 
-    override suspend fun status(progress: Progress, msg: String?) {
+    override fun status(progress: Progress, msg: String?) {
         updateProgress(progress, this.weight, msg)
     }
 
@@ -89,7 +91,7 @@ private class InternalWeightedProgressTracker(
         listeners.add(listener)
     }
 
-    override suspend fun finish() {
+    override fun finish() {
         if (!progress.finished) updateProgress(Progress.from(1 - progress.progress), totalWeight, null)
     }
 }

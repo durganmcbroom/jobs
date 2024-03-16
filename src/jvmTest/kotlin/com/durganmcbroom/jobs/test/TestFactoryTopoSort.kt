@@ -1,35 +1,30 @@
 package com.durganmcbroom.jobs.test
 
-import com.durganmcbroom.jobs.Job
-import com.durganmcbroom.jobs.JobElementFactory
-import com.durganmcbroom.jobs.JobElementKey
+import com.durganmcbroom.jobs.*
+import com.durganmcbroom.jobs.topologicalSort
 import kotlin.test.Test
 
 class TestFactoryTopoSort {
-    data class TestKey(override val name: String) : JobElementKey<JobElementFactory>
+    data class TestKey(override val name: String) : JobContext.Key<JobFacetFactory>
 
-    fun newFactory(key: TestKey, dependencies: List<JobElementKey<out JobElementFactory>>) : JobElementFactory {
-        return object : JobElementFactory {
-            override val dependencies: List<JobElementKey<out JobElementFactory>> = dependencies
+    public companion object {
 
-            override fun <T, E> apply(job: Job<T, E>): Job<T, E> {
-                TODO("Not yet implemented")
+        fun newFactory(key: TestKey, dependencies: List<JobContext.Key<out JobFacetFactory>>): JobFacetFactory {
+            return object : JobFacetFactory {
+                override val dependencies: List<JobContext.Key<out JobFacetFactory>> = dependencies
+
+                override fun <T> apply(job: Job<T>): Job<T> {
+                    return job
+                }
+
+                override val key: JobContext.Key<JobFacetFactory> = key
             }
-
-            override val key: JobElementKey<JobElementFactory> = key
         }
-    }
-
-    private fun sort(list: List<JobElementFactory>) : List<JobElementFactory> {
-       val method = Class.forName("com.durganmcbroom.jobs.Builders").getDeclaredMethod("topologicalSort", List::class.java)
-        method.trySetAccessible()
-        return method.invoke(null, list) as List<JobElementFactory>
-
     }
 
     @Test
     fun `Test the topological sort`() {
-        val factories = ArrayList<JobElementFactory>()
+        val factories = ArrayList<JobFacetFactory>()
 
         factories.add(newFactory(TestKey("One"), listOf(TestKey("Two"), TestKey("Three"))))
         factories.add(newFactory(TestKey("Two"), listOf(TestKey("Four"))))
@@ -37,7 +32,7 @@ class TestFactoryTopoSort {
         factories.add(newFactory(TestKey("Four"), listOf(TestKey("Three"))))
         factories.add(newFactory(TestKey("Five"), listOf()))
 
-        val sortedKeys = sort(factories)
+        val sortedKeys = topologicalSort(factories)
             .map { it.key.name }
 
         println(sortedKeys)
@@ -46,4 +41,6 @@ class TestFactoryTopoSort {
              listOf("Five", "Three", "Four", "Two", "One")
         )
     }
+
+
 }

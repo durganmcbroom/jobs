@@ -2,157 +2,100 @@
 
 package com.durganmcbroom.jobs
 
-import kotlinx.coroutines.*
-import java.lang.IllegalArgumentException
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
-
-private class JobThrowable(
-    val err: Any?
-) : Throwable()
-
-public class JobScope<E> internal constructor(
-    private val delegate: CoroutineScope
-) : CoroutineScope by delegate {
-    public fun fail(err: E): Nothing {
-        throw JobThrowable(err)
+private class DefaultJobScope(override val context: JobContext) : JobScope {
+    override fun <T> join(job: Job<T>): Result<T> {
+        return job.call(context)
     }
 
-    public fun <T> JobResult<T, E>.attempt(): T = when (this) {
-        is JobResult.Failure<E> -> fail(output)
-        is JobResult.Success<T> -> output
+    override fun <T> Result<T>.merge(): T {
+        return getOrThrow()
     }
 }
 
-public fun <T, E> Job(block: suspend CoroutineScope.() -> JobResult<T, E>): Job<T, E> = object : Job<T, E> {
-    override suspend fun invoke(): JobResult<T, E> = coroutineScope(block)
-}
+@JobDsl
+public fun <T> Job(
+    block: JobScope.() -> Result<T>
+): Job<T> = object : Job<T> {
+    override fun call(context: JobContext): Result<T> {
+        val scope = DefaultJobScope(context)
 
-public suspend fun <T, E> jobScope(
-    block: suspend JobScope<E>.() -> T
-) : JobResult<T, E> = coroutineScope {
-    val result = runCatching {
-        JobScope<E>(this@coroutineScope).block()
-    }
-
-    if (result.isSuccess) JobResult.Success(result.getOrNull()!!)
-    else {
-        val exception = result.exceptionOrNull()
-        val err = (exception as? JobThrowable)?.err ?: throw (exception
-            ?: IllegalStateException("Job was not successful however there is also no error thrown."))
-        JobResult.Failure(err as E)
+        return scope.block()
     }
 }
 
-public suspend fun <T, E> job(
-    context: CoroutineContext = EmptyCoroutineContext,
-    block: suspend JobScope<E>.() -> T
-): JobResult<T, E> {
+@JobDsl
+public inline fun <T> SuccessfulJob(
+    crossinline block: () -> T
+): Job<T> {
+    return Job {
+        Result.success(block())
+    }
+}
+
+@JobDsl
+public inline fun FailingJob(
+    crossinline block: () -> Throwable
+): Job<Nothing> {
+    return Job {
+        Result.failure(block())
+    }
+}
+
+
+// Does not apply factories, simply gives you a scope in which to make job invocations
+@JobDsl
+public fun <T> launch(
+    context: JobContext = EmptyJobContext,
+    block: JobScope.() -> T
+): T {
+    val scope = DefaultJobScope(context)
+    return scope.block()
+}
+
+@JobDsl
+public fun <T> job(
+    context: JobContext = EmptyJobContext,
+    block: JobScope.() -> T
+): Job<T> {
     val job = Job {
-        val result = runCatching {
-            JobScope<E>(this@Job).block()
-        }
-
-        if (result.isSuccess) JobResult.Success(result.getOrNull()!!)
-        else {
-            val exception = result.exceptionOrNull()
-            val err = (exception as? JobThrowable)?.err ?: throw (exception
-                ?: IllegalStateException("Job was not successful however there is also no error thrown."))
-            JobResult.Failure(err as E)
+        try {
+            Result.success(block())
+        } catch (t: Exception) {
+            Result.failure(t)
         }
     }
 
-    return job(context, job)
+    return applyFactories(context, job)
 }
 
-public suspend fun <T, E> job(
-    context: CoroutineContext = EmptyCoroutineContext,
-    job: Job<T, E>
-): JobResult<T, E> = withContext(context) {
-    val factories = coroutineContext.fold(ArrayList<JobElementFactory>()) { acc, it: CoroutineContext.Element ->
-        if (it is JobElementFactory) {
-            acc.add(it)
-        }
-        acc
-    }
+//@JobDsl
+//public fun <T> wrapContext(
+//    context: JobContext,
+//    block: JobScope.() -> Job<T>
+//): Job<T> = Job {
+//    block().call(context)
+//}
 
-    topologicalSort(factories)
-        .reversed()
-        .fold(job) {acc, it ->
-        it.apply(acc)
-    }()
+@JobDsl
+public fun <T> JobScope.withContext(context: JobContext = EmptyJobContext, block: JobScope.() -> T): T {
+    val scope = DefaultJobScope(this.context + context)
+    return scope.block()
 }
 
-public suspend fun <T> jobCatching(
-    context: CoroutineContext = EmptyCoroutineContext,
-    block: suspend JobScope<Throwable>.() -> T
-): JobResult<T, Throwable> {
-    val catchingJob = Job {
-        val jobScope = JobScope<Throwable>(this)
+// Its very important that this method is not called from a Job created inside a
+// facet factory. If this is the case and the factory consumes the context it was
+// defined in a stack overflow will occur.
+internal fun <T> applyFactories(
+    context: JobContext = EmptyJobContext,
+    job: Job<T>
+): Job<T> {
+    return Job {
+        val factories = topologicalSort(this.context.factories + context.factories)
 
-        val result = runCatching {
-            jobScope.block()
-        }
-
-        if (result.isSuccess) JobResult.Success(result.getOrNull()!!)
-        else {
-            val exception = result.exceptionOrNull()
-            val err = ((exception as? JobThrowable)?.err as? Throwable) ?: exception
-            ?: IllegalStateException("Job was not successful however there is also no error thrown.")
-            JobResult.Failure(err)
-        }
+        factories
+            .reversed()
+            .fold(job) { acc, it ->
+                it.apply(acc, this.context)
+            }.call(this.context.factories.fold(context) {acc, it -> acc + it})
     }
-
-    return job(context, catchingJob)
-}
-
-private fun topologicalSort(factories: List<JobElementFactory>) : List<JobElementFactory> {
-    val factoryMap = factories.associateBy(JobElementFactory::key)
-
-    val stack = ArrayList<JobElementFactory>(factories.size)
-    val visited = HashSet<JobElementKey<*>>(factories.size)
-
-    // Uses up more memory(a very small amount) but is very quick
-    data class Trace(
-        private val ordered: MutableList<JobElementKey<out JobElementFactory>>,
-        private val set: MutableSet<JobElementKey<out JobElementFactory>>
-    ) {
-        fun push(key: JobElementKey<out JobElementFactory>) {
-            ordered.add(key)
-            if (!set.add(key)) {
-                throw IllegalArgumentException(
-                    "The following JobElementFactories have cyclic dependencies. The cyclic trace is as follows:\n${
-                         ordered.joinToString(separator = " -> ") {it.name}
-                    }"
-                )
-            }
-        }
-
-        fun pop() {
-           set.remove(ordered.removeAt(ordered.size - 1))
-        }
-    }
-
-    fun recursivelySort(factory: JobElementFactory, trace: Trace) {
-        trace.push(factory.key)
-        if (!visited.add(factory.key)) return
-
-        for (dependency in factory.dependencies) {
-            recursivelySort(factoryMap[dependency]
-                ?: throw IllegalArgumentException("Factory: '${factory.key.name}' " +
-                        "required other type: '${dependency.name}' to be installed in " +
-                        "the current context and it was not found!"), trace)
-        }
-
-        trace.pop()
-        stack.add(factory)
-    }
-
-    for (factory in factories) {
-        recursivelySort(factory, Trace(
-            ArrayList(), HashSet()
-        ))
-    }
-
-    return stack
 }

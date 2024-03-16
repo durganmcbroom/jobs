@@ -1,11 +1,10 @@
 package com.durganmcbroom.jobs.logging.simple
 
-import com.durganmcbroom.jobs.BasicJobElementFactory
+import com.durganmcbroom.jobs.BasicJobFacetFactory
+import com.durganmcbroom.jobs.JobName
 import com.durganmcbroom.jobs.logging.LogLevel
 import com.durganmcbroom.jobs.logging.Logger
 import com.durganmcbroom.jobs.logging.LoggerFactory
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.coroutineScope
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -16,29 +15,18 @@ import java.util.logging.LogRecord
 import java.util.logging.Level as JavaLevel
 import java.util.logging.Logger as JavaLogger
 
-public fun SimpleLoggerFactory() : LoggerFactory = object : BasicJobElementFactory<Logger>(listOf(), {
-    coroutineScope {
-            val name = coroutineContext[CoroutineName]?.name
-                ?: throw IllegalArgumentException("Cant find the job name! Make sure you add CoroutineName to the coroutine context.")
+public fun SimpleLoggerFactory(): LoggerFactory = object : BasicJobFacetFactory<Logger>(listOf(), {
+    val name = context[JobName]?.name
+        ?: throw IllegalArgumentException("Cant find the job name! Make sure you add CoroutineName to the coroutine context.")
 
-            SimpleLogger(SimpleLogger.createLogger(name))
-        }
+    SimpleLogger(SimpleLogger.createLogger(name))
 }), LoggerFactory {}
-//    retur/n BasicJobElementFactory("SimpleLogger") {
-//        coroutineScope {
-//            val name = coroutineContext[CoroutineName]?.name
-//                ?: throw IllegalArgumentException("Cant find the job name! Make sure you add CoroutineName to the coroutine context.")
-//
-//            SimpleLogger(SimpleLogger.createLogger(name))
-//        }
-//    }
-//}
 
-private class SimpleLogger (
+private class SimpleLogger(
     val realLogger: JavaLogger
 ) : Logger {
     companion object {
-        fun createLogger(name: String) : JavaLogger {
+        fun createLogger(name: String): JavaLogger {
             LogManager.getLogManager().reset()
             val rootLogger: JavaLogger = LogManager.getLogManager().getLogger("")
 
@@ -47,6 +35,7 @@ private class SimpleLogger (
                     val out = when (record.level) {
                         Level.SEVERE,
                         Level.WARNING -> System.err
+
                         else -> System.out
                     }
 
@@ -64,8 +53,9 @@ private class SimpleLogger (
 
                     out.println(msg)
                 }
-                override fun flush() {  }
-                override fun close() {  }
+
+                override fun flush() {}
+                override fun close() {}
             }
 
             rootLogger.addHandler(value)

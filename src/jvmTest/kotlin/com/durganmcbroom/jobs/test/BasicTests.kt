@@ -10,7 +10,7 @@ class BasicTests {
         override val dependencies: List<JobContext.Key<BasicFactory>>
             get() = listOf()
 
-        override fun <T> apply(job: Job<T>): Job<T> {
+        override fun <T> apply(job: Job<T>, oldContext: JobContext): Job<T> {
             return Job {
                 println("You basic")
                 job.call(context)

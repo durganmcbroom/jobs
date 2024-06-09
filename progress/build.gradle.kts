@@ -76,9 +76,9 @@ publishing {
 
             withXml {
                 val repositoriesNode = asNode().appendNode("repositories")
-                val yakclientRepositoryNode = repositoriesNode.appendNode("repository")
-                yakclientRepositoryNode.appendNode("id", "yakclient")
-                yakclientRepositoryNode.appendNode("url", "http://maven.yakclient.net/snapshots")
+                val extFrameworkRepositoryNode = repositoriesNode.appendNode("repository")
+                extFrameworkRepositoryNode.appendNode("id", "extframework")
+                extFrameworkRepositoryNode.appendNode("url", "http://maven.extframework.dev/snapshots")
             }
 
             licenses {

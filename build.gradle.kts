@@ -72,8 +72,8 @@ allprojects {
     publishing {
         repositories {
             maven {
-                name = "yakclient-repo"
-                url = uri("http://maven.yakclient.net/snapshots")
+                name = "extframeowrk-repo"
+                url = uri("http://maven.extframework.dev/snapshots")
                 isAllowInsecureProtocol = true
 
                 credentials {

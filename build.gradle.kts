@@ -1,8 +1,5 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("multiplatform") version "1.9.21"
-//    kotlin("jvm") version "1.7.10" apply false
     id("maven-publish")
     id("org.jetbrains.dokka") version "1.9.10"
 }
@@ -49,12 +46,6 @@ tasks.register("publishAll") {
 tasks.register("publishAllLocally") {
     dependsOn(allprojects.map { it.tasks.getByName("publishToMavenLocal") })
 }
-
-//tasks.withType<KotlinCompile>().configureEach {
-//    kotlinOptions {
-//        freeCompilerArgs = freeCompilerArgs + "-Xcontext-receivers"
-//    }
-//}
 
 allprojects {
     apply(plugin = "maven-publish")

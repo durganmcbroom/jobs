@@ -64,8 +64,7 @@ allprojects {
         repositories {
             maven {
                 name = "extframeowrk-repo"
-                url = uri("http://maven.extframework.dev/snapshots")
-                isAllowInsecureProtocol = true
+                url = uri("https://maven.extframework.dev/snapshots")
 
                 credentials {
                     username = project.findProperty("maven.user") as String?

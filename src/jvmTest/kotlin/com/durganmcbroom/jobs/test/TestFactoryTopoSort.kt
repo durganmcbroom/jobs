@@ -1,19 +1,20 @@
 package com.durganmcbroom.jobs.test
 
-import com.durganmcbroom.jobs.*
+import com.durganmcbroom.jobs.Job
+import com.durganmcbroom.jobs.JobContext
+import com.durganmcbroom.jobs.JobFacetFactory
 import com.durganmcbroom.jobs.topologicalSort
 import kotlin.test.Test
 
 class TestFactoryTopoSort {
     data class TestKey(override val name: String) : JobContext.Key<JobFacetFactory>
 
-    public companion object {
+    companion object {
 
         fun newFactory(key: TestKey, dependencies: List<JobContext.Key<out JobFacetFactory>>): JobFacetFactory {
             return object : JobFacetFactory {
                 override val dependencies: List<JobContext.Key<out JobFacetFactory>> = dependencies
-
-                override fun <T> apply(job: Job<T>): Job<T> {
+                override fun <T> apply(job: Job<T>, oldContext: JobContext): Job<T> {
                     return job
                 }
 
@@ -38,7 +39,7 @@ class TestFactoryTopoSort {
         println(sortedKeys)
         assert(
             sortedKeys ==
-             listOf("Five", "Three", "Four", "Two", "One")
+                    listOf("Five", "Three", "Four", "Two", "One")
         )
     }
 

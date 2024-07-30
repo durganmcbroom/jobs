@@ -27,7 +27,9 @@ kotlin {
 
     sourceSets {
         val commonMain by getting {
-            dependencies {}
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+            }
         }
         val commonTest by getting {
             dependencies {
@@ -51,7 +53,7 @@ allprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
 
-    version = "1.2-SNAPSHOT"
+    version = "1.3-SNAPSHOT"
 
     val dokkaHtml by tasks.getting(org.jetbrains.dokka.gradle.DokkaTask::class)
 

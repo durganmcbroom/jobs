@@ -2,8 +2,14 @@
 
 package com.durganmcbroom.jobs
 
-private class DefaultJobScope(override val context: JobContext) : JobScope {
+import com.durganmcbroom.jobs.async.AsyncJob
+
+internal class DefaultJobScope(override val context: JobContext) : JobScope {
     override fun <T> join(job: Job<T>): Result<T> {
+        return job.call(context)
+    }
+
+    override suspend fun <T> join(job: AsyncJob<T>): Result<T> {
         return job.call(context)
     }
 
@@ -22,6 +28,7 @@ public fun <T> Job(
         return scope.block()
     }
 }
+
 
 @JobDsl
 public inline fun <T> SuccessfulJob(
@@ -67,14 +74,6 @@ public fun <T> job(
 
     return applyFactories(context, job)
 }
-
-//@JobDsl
-//public fun <T> wrapContext(
-//    context: JobContext,
-//    block: JobScope.() -> Job<T>
-//): Job<T> = Job {
-//    block().call(context)
-//}
 
 @JobDsl
 public fun <T> JobScope.withContext(context: JobContext = EmptyJobContext, block: JobScope.() -> T): T {

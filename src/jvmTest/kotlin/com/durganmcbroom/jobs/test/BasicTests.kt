@@ -1,8 +1,12 @@
 package com.durganmcbroom.jobs.test
 
 import com.durganmcbroom.jobs.*
+import com.durganmcbroom.jobs.async.asyncJob
+import com.durganmcbroom.jobs.async.launchAsync
+import kotlinx.coroutines.runBlocking
 import java.lang.IllegalStateException
 import kotlin.test.Test
+import kotlin.test.assertNotNull
 
 class BasicTests {
     class BasicFactory : JobFacetFactory {
@@ -118,6 +122,18 @@ class BasicTests {
                 check(context[TestStringFacet] == null)
                 check(context[TestIntFacet] != null)
             }().merge()
+        }
+    }
+
+    @Test
+    fun `Test async jobs work`() {
+        runBlocking {
+            launchAsync(TestIntFacetFactory() + BasicFactory()) {
+                asyncJob {
+                    println("Job scope")
+                    assertNotNull(context[TestIntFacet])
+                }().merge()
+            }
         }
     }
 }

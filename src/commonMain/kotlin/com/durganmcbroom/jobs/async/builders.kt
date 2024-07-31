@@ -15,7 +15,7 @@ public fun <T> AsyncJob(
 }
 
 @JobDsl
-public suspend fun <T> asyncJob(
+public fun <T> asyncJob(
     context: JobContext = EmptyJobContext,
     block: suspend JobScope.() -> T
 ) : AsyncJob<T> {

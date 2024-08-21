@@ -53,7 +53,7 @@ allprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
 
-    version = "1.3-SNAPSHOT"
+    version = "1.3.1-SNAPSHOT"
 
     val dokkaHtml by tasks.getting(org.jetbrains.dokka.gradle.DokkaTask::class)
 

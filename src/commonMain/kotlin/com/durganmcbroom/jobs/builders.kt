@@ -89,12 +89,11 @@ internal fun <T> applyFactories(
     job: Job<T>
 ): Job<T> {
     return Job {
-        val factories = topologicalSort(this.context.factories + context.factories)
+        val factories = sortFactories(this.context, context)
 
         factories
-            .reversed()
             .fold(job) { acc, it ->
                 it.apply(acc, this.context)
-            }.call(this.context.factories.fold(context) {acc, it -> acc + it})
+            }.call(this.context.factories.fold(context) { acc, it -> acc + it })
     }
 }

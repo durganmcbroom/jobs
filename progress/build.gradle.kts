@@ -12,7 +12,7 @@ kotlin {
     explicitApi()
 
     jvm {
-        jvmToolchain(17)
+        jvmToolchain(8)
         withJava()
         testRuns["test"].executionTask.configure {
             useJUnitPlatform()

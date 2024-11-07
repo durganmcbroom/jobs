@@ -24,16 +24,18 @@ class TestProgressNotification {
     @Test
     fun `Test basic print notifications`() {
         launch(SimpleProgressNotifierFactory() + WeightedProgressTrackerFactory() + SimpleLoggerFactory()) {
-            val job2 = job(JobName("Second job")) {
-                "This is from the second job"
-            }().merge()
+            job {
+                val job2 = job(JobName("Second job")) {
+                    "This is from the second job"
+                }().merge()
 
-            val job3 = job(JobName("Third job?")) {
-                "This is from the third job"
-            }().merge()
+                val job3 = job(JobName("Third job?")) {
+                    "This is from the third job"
+                }().merge()
 
-            println(job2)
-            println(job3)
+                println(job2)
+                println(job3)
+            }
         }
     }
 }

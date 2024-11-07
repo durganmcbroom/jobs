@@ -14,7 +14,7 @@ kotlin {
     explicitApi()
 
     jvm {
-        jvmToolchain(17)
+        jvmToolchain(8)
         withJava()
         testRuns["test"].executionTask.configure {
             useJUnitPlatform()
@@ -53,7 +53,7 @@ allprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
 
-    version = "1.3.1-SNAPSHOT"
+    version = "1.3.3-SNAPSHOT"
 
     val dokkaHtml by tasks.getting(org.jetbrains.dokka.gradle.DokkaTask::class)
 
@@ -62,6 +62,7 @@ allprojects {
         archiveClassifier.set("javadoc")
         from(dokkaHtml.outputDirectory)
     }
+
     publishing {
         repositories {
             maven {
@@ -78,7 +79,6 @@ allprojects {
             }
         }
     }
-
 }
 
 publishing {

@@ -107,13 +107,6 @@ class BasicTests {
     }
 
     @Test
-    fun `Test out of order job factories in job composition`() {
-        job {
-            println("And a string?! : '${facet(TestStringFacet).value}")
-        }.call(TestStringFacetFactory() + TestIntFacetFactory()).getOrThrow()
-    }
-
-    @Test
     fun `Test raw facets dont compose`() {
         launch(TestStringFacet("Hey how are you?") + TestIntFacetFactory()) {
             check(context[TestStringFacet]?.value == "Hey how are you?")

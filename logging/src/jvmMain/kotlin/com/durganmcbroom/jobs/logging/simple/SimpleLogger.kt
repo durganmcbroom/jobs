@@ -5,6 +5,7 @@ import com.durganmcbroom.jobs.JobName
 import com.durganmcbroom.jobs.logging.LogLevel
 import com.durganmcbroom.jobs.logging.Logger
 import com.durganmcbroom.jobs.logging.LoggerFactory
+import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -40,7 +41,8 @@ private class SimpleLogger(
                     }
 
                     val zdt = ZonedDateTime.ofInstant(
-                        record.instant, ZoneId.systemDefault()
+                        Instant.ofEpochMilli(record.millis),
+                        ZoneId.systemDefault()
                     )
 
                     val msg = String.format(
